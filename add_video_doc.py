@@ -16,7 +16,9 @@ VIDEO_DETAILS = {
     "menu_title": "Get started with Node.js",
     "partial_card_file_name": "partial_card_node_get_started",
     "partial_card_title": "Get Started With Node.js",
-    "partial_card_description": "Get started with the Cloudinary Node.js SDK"
+    "partial_card_description": "Get started with the Cloudinary Node.js SDK",
+    "public_id": "Getting_Started_in_Node_-_v3_lma5vk",
+    "github_url": "https://github.com/cloudinary-community/cloudinary-examples/tree/main/examples/node-image-upload"
 }
 
 JIRA_USERNAME = os.getenv("JIRA_USERNAME")
@@ -100,8 +102,6 @@ def update_yaml_with_new_entry(yaml_data, selected_tutorial_id, new_yaml_entry):
     return yaml_data
 
 def create_new_documentation_page(jira_ticket):
-    # Hardcoded for now - doesn't seem to be available through YouTube access
-    github_url = "https://github.com/cloudinary-devs/color-accessibility"
 
     # Parse the JIRA ticket for the video link
     ticket_id = jira_ticket.split('/')[-1]
@@ -210,7 +210,7 @@ def create_new_documentation_page(jira_ticket):
         content = file.read()
 
     content = re.sub(r'videoId:\s*["\'].*?["\']', f'videoId: "{video_id}"', content)
-    content = re.sub(r'\[githublink\]:\s*https?://[^\s]+', f'[githublink]: {github_url}', content)
+    content = re.sub(r'\[githublink\]:\s*https?://[^\s]+', f'[githublink]: {VIDEO_DETAILS["github_url"]}', content)
 
     with open(dest_md, 'w') as file:
         file.write(content)
