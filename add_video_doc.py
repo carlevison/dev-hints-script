@@ -6,6 +6,19 @@ import requests
 from git import Repo
 from collections import OrderedDict
 
+# Global variables for video documentation details
+VIDEO_DETAILS = {
+    "short_summary": "Learn how to get started with the Cloudinary Node.js SDK. This tutorial walks you through configuring the widget, managing unsigned uploads, and creating a seamless user experience for uploading images.",
+    "file_name": "node_get_started_tutorial",
+    "title": "Get started with Node.js (video tutorial)",
+    "meta_title": "Get Started with Node.js (Video Tutorial)",
+    "description": "Learn to get started with Node.js for efficient image uploads, including configuration and unsigned uploads.",
+    "menu_title": "Get started with Node.js",
+    "partial_card_file_name": "partial_card_node_get_started",
+    "partial_card_title": "Get Started With Node.js",
+    "partial_card_description": "Get started with the Cloudinary Node.js SDK"
+}
+
 JIRA_USERNAME = os.getenv("JIRA_USERNAME")
 JIRA_API_TOKEN = os.getenv("JIRA_API_TOKEN")
 
@@ -49,7 +62,7 @@ def suggest_placement(video_title, menu_json_path):
     for idx, (tutorial_id, path) in enumerate(tutorial_sections):
         print(f"{idx + 1}. {tutorial_id} (Path: {' > '.join(path)})")
 
-    print("\nSelect the index where you want to add the tutorial:")
+    print("\nSelect the index after which you want to add the tutorial:")
     selected_index = int(input("Index: ")) - 1
 
     return tutorial_sections[selected_index][0]
@@ -93,9 +106,11 @@ def create_new_documentation_page(jira_ticket):
     # Parse the JIRA ticket for the video link
     ticket_id = jira_ticket.split('/')[-1]
     print("ticket_id: ", ticket_id)
-    response = requests.get(f"https://cloudinary.atlassian.net/rest/api/3/issue/{ticket_id}?fields=description",
-    auth=(JIRA_USERNAME, JIRA_API_TOKEN))
 
+    response = requests.get(
+        f"https://cloudinary.atlassian.net/rest/api/3/issue/{ticket_id}?fields=description",
+        auth=(JIRA_USERNAME, JIRA_API_TOKEN)
+    )
     if response.status_code != 200:
         raise ValueError(f"Failed to fetch JIRA issue. Status code: {response.status_code}")
 
@@ -107,34 +122,24 @@ def create_new_documentation_page(jira_ticket):
         raise ValueError("No video URL found in the JIRA ticket description.")
 
     video_id = video_url.split('v=')[-1]
-    print("video_id:", video_id)
 
-    response = requests.get(f"https://www.youtube.com/oembed?url={video_url}&format=json")
-    video_info = response.json()
-    print("video_info", video_info)
-    
-    video_title = video_info.get('title', 'New Video Tutorial')
-    video_description = video_info.get('author_name', '')
-
-    print("video_title:", video_title)
-    print("video_description:", video_description)
 
     # Git operations
     repo = Repo(os.path.join(os.getcwd(), 'cld_docs'))
-    branch_name = f"{ticket_id}_{video_title.replace(' ', '_').lower()}"
+    branch_name = f"{ticket_id}_{VIDEO_DETAILS['file_name']}"
     repo.git.checkout('master')
     repo.git.pull()
     repo.git.checkout('-b', branch_name)
 
     # Determine placement
     json_path = os.path.join(os.getcwd(), 'cld_docs/app/menus/submenus/programmable-media-menu.json')
-    selected_tutorial_id = suggest_placement(video_title, json_path)
+    selected_tutorial_id = suggest_placement(VIDEO_DETAILS['title'], json_path)
 
     # Update JSON menu
     with open(json_path, 'r') as file:
         menu_data = json.load(file)
 
-    new_entry = {"id": f"{ticket_id}_tutorial"}
+    new_entry = {"id": f"{VIDEO_DETAILS['file_name']}"}
 
     def add_to_menu(data):
         """
@@ -181,11 +186,11 @@ def create_new_documentation_page(jira_ticket):
         yaml_data = yaml.full_load(file)
 
     new_yaml_entry = {
-        f"{ticket_id}_tutorial": {
-            "title": video_title,
-            "meta_title": video_title,
-            "description": video_description,
-            "menu_title": video_title
+        f"{VIDEO_DETAILS['file_name']}": {
+            "title": VIDEO_DETAILS['title'],
+            "meta_title": VIDEO_DETAILS['meta_title'],
+            "description": VIDEO_DETAILS['description'],
+            "menu_title": VIDEO_DETAILS['menu_title']
         }
     }
 
@@ -199,15 +204,13 @@ def create_new_documentation_page(jira_ticket):
 
     # Create new documentation file
     source_md = os.path.join(os.getcwd(), 'cld_docs/app/views/documentation/upload_assets_in_react_tutorial.html.md')
-    dest_md = os.path.join(os.getcwd(), f'cld_docs/app/views/documentation/{ticket_id}_tutorial.html.md')
+    dest_md = os.path.join(os.getcwd(), f'cld_docs/app/views/documentation/{VIDEO_DETAILS["file_name"]}.html.md')
 
     with open(source_md, 'r') as file:
         content = file.read()
 
-    #content = re.sub(r'videoId: ".*?"', f'videoId: "{video_id}"', content)
     content = re.sub(r'videoId:\s*["\'].*?["\']', f'videoId: "{video_id}"', content)
     content = re.sub(r'\[githublink\]:\s*https?://[^\s]+', f'[githublink]: {github_url}', content)
-
 
     with open(dest_md, 'w') as file:
         file.write(content)
