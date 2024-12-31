@@ -44,6 +44,7 @@ yaml.add_representer(OrderedDict, represent_ordereddict)
 def suggest_placement(video_title, menu_json_path):
     """
     Suggest the best place to add the new video tutorial in the menu.
+    Returns both the selected tutorial ID and its path.
     """
     with open(menu_json_path, 'r') as file:
         menu_data = json.load(file)
@@ -66,8 +67,9 @@ def suggest_placement(video_title, menu_json_path):
 
     print("\nSelect the index after which you want to add the tutorial:")
     selected_index = int(input("Index: ")) - 1
-
-    return tutorial_sections[selected_index][0]
+    
+    selected_tutorial = tutorial_sections[selected_index]
+    return selected_tutorial[0], selected_tutorial[1]  # Return both ID and path
 
 def update_yaml_with_new_entry(yaml_data, selected_tutorial_id, new_yaml_entry):
     """
@@ -101,8 +103,60 @@ def update_yaml_with_new_entry(yaml_data, selected_tutorial_id, new_yaml_entry):
     
     return yaml_data
 
-def create_new_documentation_page(jira_ticket):
+def add_partial_doc_to_parent_pages(docs_dir, partial_card_file_name, parent_path):
+    """
+    Add partial doc reference to parent pages derived from the selected path.
+    """
+    # Convert section IDs to filenames and create full paths
+    # We want the last two parent directories before the final selection
+    parent_sections = parent_path[-2:]  # Take the two parents before the final selection
+    parent_pages = [
+        os.path.join(docs_dir, f'app/views/documentation/{section}.html.md')
+        for section in parent_sections
+    ]
+    
+    for parent_page in parent_pages:
+        if os.path.exists(parent_page):
+            with open(parent_page, 'r') as file:
+                content = file.read()
+            
+            # Find the last {partialdoc} and add the new one after it
+            last_partial = content.rindex('{partialdoc}')
+            insert_pos = content.index('\n', last_partial) + 1
+            new_partial = f'{{partialdoc}}{partial_card_file_name}{{partialdoc}}\n'
+            
+            updated_content = content[:insert_pos] + new_partial + content[insert_pos:]
+            
+            with open(parent_page, 'w') as file:
+                file.write(updated_content)
 
+def create_partial_card(docs_dir):
+    """Create and update the partial card file."""
+    source_partial = os.path.join(
+        docs_dir,
+        'app/views/documentation/partials/_partial_card_upload_assets_in_react.html.md'
+    )
+    dest_partial = os.path.join(
+        docs_dir,
+        f'app/views/documentation/partials/_{VIDEO_DETAILS["partial_card_file_name"]}.html.md'
+    )
+    
+    # Copy the file
+    with open(source_partial, 'r') as file:
+        content = file.read()
+    
+    # Update the content
+    content = content.replace('upload_assets_in_react_tutorial', VIDEO_DETAILS['file_name'])
+    content = re.sub(r'vidId =\s*["\'].*?["\']', f'vidId = "{VIDEO_DETAILS["public_id"]}"', content)
+    content = re.sub(r'<h6 class="tut_header">.*?</h6>', f'<h6 class="tut_header">{VIDEO_DETAILS["partial_card_title"]}</h6>', content)
+    content = re.sub(r'<small>.*?</small>', f'<small>{VIDEO_DETAILS["partial_card_description"]}</small>', content)
+    
+    # Write the new file
+    with open(dest_partial, 'w') as file:
+        file.write(content)
+
+def create_new_documentation_page(jira_ticket):
+    """Main function to create new documentation page with all required updates."""
     # Parse the JIRA ticket for the video link
     ticket_id = jira_ticket.split('/')[-1]
     print("ticket_id: ", ticket_id)
@@ -123,7 +177,6 @@ def create_new_documentation_page(jira_ticket):
 
     video_id = video_url.split('v=')[-1]
 
-
     # Git operations
     repo = Repo(os.path.join(os.getcwd(), 'cld_docs'))
     branch_name = f"{ticket_id}_{VIDEO_DETAILS['file_name']}"
@@ -133,7 +186,7 @@ def create_new_documentation_page(jira_ticket):
 
     # Determine placement
     json_path = os.path.join(os.getcwd(), 'cld_docs/app/menus/submenus/programmable-media-menu.json')
-    selected_tutorial_id = suggest_placement(VIDEO_DETAILS['title'], json_path)
+    selected_tutorial_id, parent_path = suggest_placement(VIDEO_DETAILS['title'], json_path)
 
     # Update JSON menu
     with open(json_path, 'r') as file:
@@ -142,14 +195,6 @@ def create_new_documentation_page(jira_ticket):
     new_entry = {"id": f"{VIDEO_DETAILS['file_name']}"}
 
     def add_to_menu(data):
-        """
-        Recursively search and add a new menu entry to the specified tutorial section.
-        
-        :param data: The entire menu data structure
-        :param selected_tutorial_id: The ID of the parent section where the new entry should be added
-        :param new_entry: The new menu entry to be added
-        :return: Boolean indicating if the entry was successfully added
-        """
         def search_and_insert(menu_list):
             for i, item in enumerate(menu_list):
                 if item.get('id') == selected_tutorial_id:
@@ -161,16 +206,11 @@ def create_new_documentation_page(jira_ticket):
                 if 'children' in item:
                     if search_and_insert(item['children']):
                         return True
-            
             return False
 
-        # Attempt to insert at the top level first
-        if search_and_insert(data):
-            return True
-        
-        return False
+        return search_and_insert(data)
     
-    add_to_menu(menu_data) 
+    add_to_menu(menu_data)
 
     with open(json_path, 'w') as file:
         json.dump(menu_data, file, indent=2)
@@ -202,20 +242,35 @@ def create_new_documentation_page(jira_ticket):
     with open(yaml_path, 'w') as file:
         yaml.dump(yaml_data, file, default_flow_style=False, Dumper=OrderedDumper)
 
-    # Create new documentation file
+    # Create and modify new documentation file
     source_md = os.path.join(os.getcwd(), 'cld_docs/app/views/documentation/upload_assets_in_react_tutorial.html.md')
     dest_md = os.path.join(os.getcwd(), f'cld_docs/app/views/documentation/{VIDEO_DETAILS["file_name"]}.html.md')
 
     with open(source_md, 'r') as file:
         content = file.read()
 
+    # Perform all content replacements at once
     content = re.sub(r'videoId:\s*["\'].*?["\']', f'videoId: "{video_id}"', content)
     content = re.sub(r'\[githublink\]:\s*https?://[^\s]+', f'[githublink]: {VIDEO_DETAILS["github_url"]}', content)
+    content = re.sub(
+        r'(## Overview\s*\n).*?(?=\n## |\Z)',
+        r'\1\n' + VIDEO_DETAILS['short_summary'] + '\n',
+        content,
+        flags=re.DOTALL
+    )
 
     with open(dest_md, 'w') as file:
         file.write(content)
 
-    # Commit changes (currently commented out for manual handling)
+    docs_dir = os.path.join(os.getcwd(), 'cld_docs')
+
+    # Add partial doc references to parent pages
+    add_partial_doc_to_parent_pages(docs_dir, VIDEO_DETAILS['partial_card_file_name'], parent_path)
+    
+    # Create and update the partial card
+    create_partial_card(docs_dir)
+
+    # Git operations (commented out for manual handling)
     # repo.git.add(all=True)
     # repo.git.commit('-m', f"Add new tutorial page for {video_title} ({ticket_id})")
     # repo.git.push('--set-upstream', 'origin', branch_name)
