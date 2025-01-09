@@ -8,15 +8,15 @@ from collections import OrderedDict
 
 # Global variables for video documentation details
 VIDEO_DETAILS = {
-    "short_summary": "Learn how to get started with the Cloudinary Node.js SDK. This tutorial walks you through configuring the widget, managing unsigned uploads, and creating a seamless user experience for uploading images.",
-    "file_name": "node_get_started_tutorial",
-    "title": "Get started with Node.js (video tutorial)",
-    "meta_title": "Get Started with Node.js (Video Tutorial)",
-    "description": "Learn to get started with Node.js for efficient image uploads, including configuration and unsigned uploads.",
-    "menu_title": "Get started with Node.js",
-    "partial_card_file_name": "partial_card_node_get_started",
-    "partial_card_title": "Get Started With Node.js",
-    "partial_card_description": "Get started with the Cloudinary Node.js SDK",
+    "short_summary": "Learn to get started with Cloudinary in a Node.js app. This tutorial covers setting up, configuring, and optimizing images using the Cloudinary Node.js SDK.",
+    "file_name": "getting_started_with_cloudinary_node_tutorial",
+    "title": "Getting started with Cloudinary in Node.js (video tutorial)",
+    "meta_title": "Getting Started With Cloudinary in Node.js (Video Tutorial)",
+    "description": "A step-by-step guide to getting started with Cloudinary in a Node.js application, including setup, configuration, and image optimization techniques.",
+    "menu_title": "Getting started with Cloudinary in Node.js",
+    "partial_card_file_name": "partial_card_getting_started_with_cloudinary_node",
+    "partial_card_title": "Cloudinary in Node.js",
+    "partial_card_description": "Learn to get started with Cloudinary in Node.js, including setup and image optimization.",
     "public_id": "Getting_Started_in_Node_-_v3_lma5vk",
     "github_url": "https://github.com/cloudinary-community/cloudinary-examples/tree/main/examples/node-image-upload"
 }
