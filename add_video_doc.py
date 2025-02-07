@@ -33,7 +33,12 @@ def represent_ordereddict(dumper, data):
 
 # Custom Dumper that inherits from SafeDumper
 class OrderedDumper(yaml.SafeDumper):
-    pass
+    def represent_str(self, data):
+        if "\n" in data:  # Ensure that \n is preserved as a literal "\n" rather than an actual line break
+            return self.represent_scalar("tag:yaml.org,2002:str", data, style='"')  # Force double quotes
+        return self.represent_scalar("tag:yaml.org,2002:str", data)
+
+OrderedDumper.add_representer(str, OrderedDumper.represent_str)
 
 # Register the custom representer
 OrderedDumper.add_representer(OrderedDict, represent_ordereddict)
